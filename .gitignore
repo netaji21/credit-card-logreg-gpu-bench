@@ -1,0 +1,35 @@
+# Dataset (download separately from Kaggle - see README)
+creditcard.csv
+*.csv
+
+# Compiled binaries
+openacc_model
+cuda_model
+cuda_model_multigpu
+
+# Build / object files
+*.o
+*.obj
+*.exe
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Nsight working files (we ship the .nsys-rep reports themselves; ignore
+# the intermediate per-process .qdstrm files Nsight emits while profiling)
+*.qdstrm
+*.qdrep

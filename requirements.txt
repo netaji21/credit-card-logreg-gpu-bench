@@ -1,0 +1,6 @@
+# CPU baseline dependencies (cpu_baseline.py).
+# RAPIDS (cudf, cuml) is intentionally not listed here - it must be installed
+# via conda; see the README for the correct command.
+numpy>=1.24
+pandas>=2.0
+scipy>=1.10

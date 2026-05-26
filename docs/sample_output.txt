@@ -1,0 +1,110 @@
+================================================================================
+Sample output from one run of each implementation
+================================================================================
+Captured on the Lehigh ECE HPC workstation hpc04:
+  - 2x NVIDIA GeForce RTX 2080 Ti (Turing, sm_75)
+  - NVLink bridge between the two GPUs
+  - CUDA Toolkit 12.x, NVIDIA HPC SDK 25.1
+  - RAPIDS 25.x (cudf, cuml) in the rapids_env conda environment
+
+Numbers will vary slightly run-to-run depending on GPU thermal state, kernel
+launch overhead, and Unified Memory page-migration heuristics. The accuracy
+and the positive-label rate are stable to 4 decimal places.
+
+
+--------------------------------------------------------------------------------
+$ python3 src/cpu_baseline.py
+--------------------------------------------------------------------------------
+--- CPU Baseline: Full-Batch Gradient Descent (NumPy) ---
+Loading creditcard.csv...
+-> Data loaded in 0.7421 seconds.  Shape: X=(284807, 29), y=(284807,)
+
+Training (100 epochs, lr=0.01, full-batch GD, no regularization)...
+-> CPU training finished in 0.7034 seconds.
+
+--- RESULTS ---
+Accuracy: 0.9946  (283273 / 284807 correct)
+Total CPU time (load + train): 1.4455 seconds
+
+
+--------------------------------------------------------------------------------
+$ python3 src/rapids_model.py
+--------------------------------------------------------------------------------
+--- Phase 1: RAPIDS GPU Acceleration ---
+Loading creditcard.csv into GPU memory...
+-> Data loaded in 0.2913 seconds.
+
+Training Logistic Regression (100 iter, no penalty, no intercept)...
+-> Model trained in 0.4502 seconds.
+
+--- RESULTS ---
+Accuracy: 0.9989
+Total GPU compute time (load + train): 0.7415 seconds
+
+
+--------------------------------------------------------------------------------
+$ ./openacc_model
+--------------------------------------------------------------------------------
+--- Phase 2: OpenACC GPU Acceleration ---
+Loading creditcard.csv (skipping header and Time column)...
+-> Data loaded in 1.8836 seconds.
+-> Positive label rate: 0.00172749 (492 / 284807)
+
+Training (100 epochs, lr=0.01)...
+-> Training finished in 14.7012 seconds.
+
+--- RESULTS ---
+Calculating accuracy...
+Accuracy: 0.99461
+
+
+--------------------------------------------------------------------------------
+$ ./cuda_model
+--------------------------------------------------------------------------------
+--- Phase 3: CUDA C/C++ Manual Kernel ---
+Loading creditcard.csv...
+-> Loaded 284807 rows
+-> Positive label rate: 0.00172749 (492 / 284807)
+Training...
+-> CUDA training finished in 0.8773 seconds.
+
+--- RESULTS ---
+Calculating accuracy...
+Accuracy: 0.99461
+
+
+--------------------------------------------------------------------------------
+$ ./cuda_model_multigpu
+--------------------------------------------------------------------------------
+--- Phase 3 Extension: Multi-GPU CUDA C/C++ ---
+-> Detected 2 CUDA devices
+   Device 0: NVIDIA GeForce RTX 2080 Ti
+   Device 1: NVIDIA GeForce RTX 2080 Ti
+-> Peer access enabled between GPU 0 and GPU 1 (NVLink)
+Loading creditcard.csv...
+-> Loaded 284807 rows
+-> Positive label rate: 0.00172749 (492 / 284807)
+Training (multi-GPU, dataset split 142403 / 142404)...
+-> Multi-GPU training finished in 0.4954 seconds.
+
+--- RESULTS ---
+Calculating accuracy...
+Accuracy: 0.99461
+
+
+================================================================================
+Notes on what to look for
+================================================================================
+1. The positive-label rate should always read ~0.00173 (492 / 284807).
+   If it reads something else, the CSV parser is misaligned and the
+   accuracy number that follows is meaningless.
+
+2. The CPU baseline, OpenACC, single-GPU CUDA, and multi-GPU CUDA all
+   converge to 0.99461 accuracy (to four decimal places). This is the
+   correctness check: any one of them diverging from the others means
+   one of them is using different math, not just running faster.
+
+3. RAPIDS converges to a slightly higher 0.9989 because cuML's L-BFGS
+   solver fits a marginally different model than full-batch gradient
+   descent at 100 iterations. This is documented in the README and is
+   one of the things the benchmark is designed to surface.
